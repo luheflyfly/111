@@ -4,6 +4,10 @@
 
 ## 1. AutoX.js 公众号采集产出（`/sdcard/ghz_outbox/gzh_<号名>_<时间戳>.json`）
 
+> 2026-09-15 起：PC 端 ADB 引擎（tools/phone_harvest.py，OCR+adb 驱动）也产同格式 JSON
+> 到本地 inbox/，多两个字段：`publish_time`（精确"2026年7月7日11:38"）与
+> `fetch_url`（带 pass_ticket 的原始链接，PC 抓正文优先用它，归档用干净 url）。
+
 ```json
 {
   "type": "gzh_articles",
@@ -11,8 +15,9 @@
   "collected_at": "2026-09-14T01:23:45.678Z",
   "device": "HUAWEI ELE-AL00",
   "items": [
-    { "title": "关于图书馆开放时间调整的通知", "url": "https://mp.weixin.qq.com/s/xxxx", "date_hint": "09-12" },
-    { "title": "数据库试用公告", "url": "", "date_hint": "昨天" }
+    { "title": "关于图书馆开放时间调整的通知", "url": "https://mp.weixin.qq.com/s?__biz=..&sn=xx",
+      "fetch_url": "https://mp.weixin.qq.com/s?__biz=..&sn=xx&pass_ticket=..",
+      "publish_time": "2026年7月7日11:38", "date_hint": "07-07" }
   ]
 }
 ```
