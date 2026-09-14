@@ -4,6 +4,7 @@
     <string name="service_label">通知采集服务</string>
     <string name="service_summary">在微信里复制公众号文章链接时自动收录</string>
     <string name="service_desc">开启后，你在微信里对公众号文章使用“复制链接”时会自动收录该文章（只读剪贴板和当前窗口，不上传任何数据）。</string>
+    <string name="btn_clip">从剪贴板一键采集</string>
     <string name="btn_service">① 开启采集服务（无障碍）</string>
     <string name="btn_folder">② 选择保存文件夹（选 Luyuan 自动同步）</string>
     <string name="btn_add">采集这条链接</string>

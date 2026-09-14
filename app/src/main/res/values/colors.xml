@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 路远同款「清爽纸白」：纸白底 + 主蓝，白卡圆角 -->
+    <color name="paper_bg">#F6F7F4</color>
+    <color name="card_white">#FFFFFF</color>
+    <color name="brand_blue">#3B82F6</color>
+    <color name="text_main">#1F2937</color>
+    <color name="text_sub">#6B7280</color>
+    <color name="ok_green">#10B981</color>
+</resources>

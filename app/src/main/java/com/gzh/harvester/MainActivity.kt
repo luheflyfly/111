@@ -36,6 +36,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        findViewById<Button>(R.id.btn_clip).setOnClickListener {
+            try {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val text = cm.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString() ?: ""
+                val url = Engine.extractMpUrl(text)
+                if (url == null) {
+                    toast("剪贴板里没有公众号文章链接（先在微信里复制一个）")
+                } else {
+                    Engine.capture(applicationContext, url, null, "剪贴板")
+                }
+            } catch (e: Exception) {
+                toast("读剪贴板失败：" + (e.message ?: ""))
+            }
+        }
         findViewById<Button>(R.id.btn_service).setOnClickListener {
             try {
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -107,7 +121,7 @@ class MainActivity : AppCompatActivity() {
         tvStatus.text = if (serviceOn) "● 采集服务：运行中（微信里复制链接即收录）"
         else "● 采集服务：未开启（点下面按钮去开）"
         tvStatus.setTextColor(
-            getColor(if (serviceOn) android.R.color.holo_green_dark else android.R.color.darker_gray)
+            getColor(if (serviceOn) R.color.ok_green else R.color.text_sub)
         )
         val folder = NoteWriter.treeUri(this)
         val tvFolder = findViewById<TextView>(R.id.tv_folder)
