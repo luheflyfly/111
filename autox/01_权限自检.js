@@ -22,11 +22,13 @@ function main() {
     toastLog("① 无障碍服务 OK");
     lines.push("无障碍服务: OK");
 
-    // 2. 悬浮窗/选择器基本能力
+    // 2. 窗口树 / 选择器查询能力（02 脚本实际靠选择器读屏）
     try {
-        var w = auto.windowRoots();
-        lines.push("窗口树读取: OK (" + (w ? w.length : 0) + " 个根)");
-        toastLog("② 窗口树读取 OK");
+        var roots = auto.windowRoots; // AutoJs6 里是属性不是函数
+        var probe = textMatches(/.+/).find();
+        lines.push("窗口树读取: OK（" + (roots ? roots.length : 0) + " 个根，当前屏 " +
+            probe.length + " 个文本节点）");
+        toastLog("② 窗口树/选择器 OK");
     } catch (e) {
         lines.push("窗口树读取: 失败 " + e);
     }

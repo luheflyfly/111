@@ -128,8 +128,20 @@ function gotoWeChatHome() {
         app.launch("com.tencent.mm");
         pause(3000, 4000);
     }
-    if (currentPackage() != "com.tencent.mm") {
-        debugDump("gotoWeChatHome", "当前包: " + currentPackage());
+    // 可能停在公众号主页/文章页/聊天里：最多按 4 次返回，直到看到底部"微信"标签
+    var tries = 0;
+    while (text("微信").exists() === false && tries < 4) {
+        back();
+        pause(900, 1400);
+        tries += 1;
+    }
+    var tab = text("微信").findOne(2500);
+    if (tab) {
+        clickCenter(tab);
+        pause(1200, 1800);
+    }
+    if (currentPackage() != "com.tencent.mm" || desc("搜索").findOne(2000) === null) {
+        debugDump("gotoWeChatHome", "回不到微信主页（找不到搜索按钮），当前包: " + currentPackage());
         return false;
     }
     return true;
@@ -147,7 +159,8 @@ function clickSearch() {
 }
 
 function typeQuery(account) {
-    var e = className("EditText").findOne(5000);
+    // className 必须给全类名，写 "EditText" 匹配不到
+    var e = className("android.widget.EditText").findOne(5000);
     if (!e) {
         debugDump("typeQuery", "没找到搜索输入框");
         return false;
@@ -169,14 +182,16 @@ function clickGzhFilter(account) {
 
 function clickFirstGzhResult(account) {
     var cands = textContains(account).find();
-    var pick = null;
+    var pick = null, pickTop = 999999;
     cands.each(function (o) {
-        if (pick) return;
         try {
             var b = o.bounds();
             var cls = "" + o.className();
-            // 跳过顶部输入框/筛选条（y 太靠上）和非文本节点
-            if (b.top > 350 && cls.indexOf("EditText") < 0 && b.height() > 20) pick = o;
+            // 跳过输入框/筛选条（300px 以上），取最靠上的真正结果行
+            if (b.top > 300 && cls.indexOf("EditText") < 0 && b.height() > 20 && b.top < pickTop) {
+                pick = o;
+                pickTop = b.top;
+            }
         } catch (e) { }
     });
     if (!pick) {
@@ -274,10 +289,18 @@ function copyLinkOfCurrentArticle(titleNode) {
     var copy = text("复制链接").findOne(3000);
     var url = "";
     if (copy) {
+        // 复制前先放个占位，便于判断剪贴板是否真的更新（安卓10后台读剪贴板可能失败）
+        try { setClip("ghz_wait_" + Date.now()); } catch (e0) {}
         clickCenter(copy);
-        pause(800, 1500);
-        try { url = "" + getClip(); } catch (e) { url = ""; }
-        if (url.indexOf("mp.weixin.qq.com") < 0) url = "";
+        for (var t = 0; t < 6; t++) {
+            pause(400, 600);
+            try { url = "" + getClip(); } catch (e1) { url = ""; }
+            if (url.indexOf("mp.weixin.qq.com") >= 0) break;
+            url = "";
+        }
+        if (!url) {
+            debugDump("copyLink", "点了复制链接但读不到链接（可能是安卓10后台剪贴板限制）");
+        }
     } else {
         debugDump("copyLink", "菜单里没找到「复制链接」");
         back(); // 关菜单
