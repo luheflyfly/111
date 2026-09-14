@@ -122,40 +122,65 @@ function harvest(account) {
 // ---------- 步骤函数（每步失败都 dump 现场） ----------
 
 function gotoWeChatHome() {
+    // 尽量强制重启微信（root 下有效；非 root 静默失败也没关系，走下面的导航）
+    try { shell("am force-stop com.tencent.mm", false); } catch (e0) {}
+    pause(1000, 1500);
     app.launch("com.tencent.mm");
-    pause(2500, 3500);
-    if (currentPackage() != "com.tencent.mm") {
-        app.launch("com.tencent.mm");
-        pause(3000, 4000);
+
+    // 等微信真正到前台（最多 15 秒；上次失败就是停在了 AutoJs6 文档页）
+    var fg = false;
+    for (var i = 0; i < 20; i++) {
+        pause(600, 900);
+        if (currentPackage() == "com.tencent.mm") { fg = true; break; }
+        if (i == 5) app.launch("com.tencent.mm");
     }
-    // 可能停在公众号主页/文章页/聊天里：最多按 4 次返回，直到看到底部"微信"标签
-    var tries = 0;
-    while (text("微信").exists() === false && tries < 4) {
-        back();
-        pause(900, 1400);
-        tries += 1;
-    }
-    var tab = text("微信").findOne(2500);
-    if (tab) {
-        clickCenter(tab);
-        pause(1200, 1800);
-    }
-    if (currentPackage() != "com.tencent.mm" || desc("搜索").findOne(2000) === null) {
-        debugDump("gotoWeChatHome", "回不到微信主页（找不到搜索按钮），当前包: " + currentPackage());
+    if (!fg) {
+        debugDump("gotoWeChatHome", "微信没切到前台，当前包: " + currentPackage());
         return false;
     }
-    return true;
+    // 等界面真的有字（跳过启动闪屏；空树时绝不能按返回，上次就是空树连按退到了桌面）
+    for (var j = 0; j < 16 && treeTextCount() < 3; j++) pause(600, 900);
+
+    // 确认在聊天列表主页（底部同时有"微信""通讯录"两个标签才算）；
+    // 不在就按一次返回再看，最多 3 次，每次都重新判断
+    for (var t = 0; t < 3; t++) {
+        if (text("微信").exists() && text("通讯录").exists()) {
+            var tab = text("微信").findOne(1500);
+            safeClick(tab);
+            pause(800, 1200);
+            return true;
+        }
+        back();
+        for (var k = 0; k < 10 && treeTextCount() < 3; k++) pause(600, 900);
+    }
+    if (text("微信").exists() && text("通讯录").exists()) return true;
+    debugDump("gotoWeChatHome", "回不到微信主页（找不到微信/通讯录标签）");
+    return false;
+}
+
+function treeTextCount() {
+    try {
+        return textMatches(/[\s\S]+/).find().length;
+    } catch (e) {
+        return 0;
+    }
 }
 
 function clickSearch() {
-    var o = desc("搜索").findOne(3000) || descContains("搜索").findOne(2000);
-    if (!o) {
-        debugDump("clickSearch", "没找到搜索按钮");
-        return false;
+    var o = desc("搜索").findOne(1500) || text("搜索").findOne(1500);
+    if (safeClick(o)) {
+        pause(1500, 2500);
+        return true;
     }
-    clickCenter(o);
+    // 坐标兜底：P30(1080宽) 主页顶部搜索条中心约 (540, 165)
+    var x = Math.round(device.width / 2);
+    var y = Math.round(device.height * 0.072);
+    if (y < 110) y = 165;
+    click(x, y);
     pause(1500, 2500);
-    return true;
+    if (className("android.widget.EditText").findOne(4000)) return true;
+    debugDump("clickSearch", "搜索按钮点不开（既找不到控件，兜底坐标也没出输入框）");
+    return false;
 }
 
 function typeQuery(account) {
@@ -227,9 +252,11 @@ function collectVisibleRows() {
             if (!t || t.length < 2) return;
             var b = o.bounds();
             if (b.top <= 0 || b.left < 0) return;
-            var key = Math.round(b.centerY() / 70);
+            if (b.right > device.width || b.bottom > device.height) return;
+            var cy = Math.round((b.top + b.bottom) / 2);
+            var key = Math.round(cy / 70);
             if (!buckets[key]) buckets[key] = [];
-            buckets[key].push({ t: t, o: o, y: b.centerY() });
+            buckets[key].push({ t: t, o: o, y: cy });
         } catch (e) { }
     });
     for (var k in buckets) {
@@ -311,11 +338,32 @@ function copyLinkOfCurrentArticle(titleNode) {
     return url;
 }
 
+function scrollDown() {
+    var w = device.width, h = device.height;
+    swipe(Math.round(w / 2), Math.round(h * 0.72), Math.round(w / 2), Math.round(h * 0.30), 500);
+}
+
 // ---------- 工具 ----------
 
 function clickCenter(o) {
-    var b = o.bounds();
-    click(Math.round((b.left + b.right) / 2), Math.round((b.top + b.bottom) / 2));
+    if (!safeClick(o)) {
+        throw new Error("控件不可点（坐标在屏幕外）: " + o);
+    }
+}
+
+// 坐标越界保护：节点中心在屏幕外直接返回 false，绝不硬点（上次 -144 崩溃的根治）
+function safeClick(o) {
+    if (!o) return false;
+    try {
+        var b = o.bounds();
+        var x = Math.round((b.left + b.right) / 2);
+        var y = Math.round((b.top + b.bottom) / 2);
+        if (x < 0 || y < 0 || x >= device.width || y >= device.height) return false;
+        click(x, y);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 function pause(a, b) {
